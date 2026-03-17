@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libmagickwand-dev \
     libpq-dev \
+    libsqlite3-dev \
     pkg-config \
     zip \
     unzip \
@@ -32,13 +33,19 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get install -y nodejs
 
-# Extensões PHP
-RUN docker-php-ext-configure gd --with-jpeg \
-    && docker-php-ext-install \
+# Extensões PHP (separadas para facilitar debug no CI)
+RUN set -eux; \
+    docker-php-ext-configure gd --with-jpeg
+
+RUN set -eux; \
+    docker-php-ext-install -j"$(nproc)" \
         pdo \
         pdo_mysql \
         pgsql \
-        pdo_pgsql \
+        pdo_pgsql
+
+RUN set -eux; \
+    docker-php-ext-install -j"$(nproc)" \
         mbstring \
         exif \
         pcntl \
@@ -46,10 +53,11 @@ RUN docker-php-ext-configure gd --with-jpeg \
         gd \
         zip \
         intl \
-        calendar \
-	    sqlite3 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+        calendar
+
+RUN set -eux; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
 
 
 # Imagick
@@ -71,5 +79,7 @@ ENV LANGUAGE=pt_BR:pt
 ENV LC_ALL=pt_BR.UTF-8
 
 WORKDIR /var/www/html
+
+USER app
 
 EXPOSE 8000
